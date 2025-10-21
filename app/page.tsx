@@ -82,7 +82,7 @@ export default function Home() {
             
             <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
               Understand GitHub Repositories
-              <span className="block mt-2 bg-gradient-to-r from-primary via-orange-500 to-orange-600 bg-clip-text text-transparent">
+              <span className="block mt-2 bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent">
                 with AI Assistance
               </span>
             </h1>
