@@ -1,6 +1,6 @@
 // Centralized API configuration
 // Change this URL to match your backend deployment
-export const API_BASE_URL = 'http://localhost:8000';
+export const API_BASE_URL = 'https://americas-smallest-listing-laid.trycloudflare.com';
 
 // API endpoints
 export const API_ENDPOINTS = {
