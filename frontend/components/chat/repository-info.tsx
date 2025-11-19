@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,53 +9,65 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Star, GitFork, Calendar, Code2, FolderOpen, FileCode } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 
+// Helper function to parse tree structure from backend
+function parseTreeStructure(treeString: string) {
+  const lines = treeString.split('\n').filter(line => line.trim());
+  const items: Array<{ name: string; type: 'folder' | 'file'; indent: number }> = [];
+  
+  for (const line of lines) {
+    // Skip header lines
+    if (line.includes('Directory structure:') || line.trim() === '') continue;
+    
+    // Count indentation level
+    const indent = line.search(/[└├│]/);
+    if (indent === -1) continue;
+    
+    // Extract name (remove tree characters and whitespace)
+    const name = line.replace(/[└├│─\s]/g, '').replace(/\//g, '').trim();
+    if (!name) continue;
+    
+    // Determine if folder or file
+    const isFolder = line.includes('/') || line.includes('├') || line.includes('└');
+    
+    items.push({
+      name,
+      type: isFolder ? 'folder' : 'file',
+      indent: Math.floor(indent / 4),
+    });
+  }
+  
+  return items.slice(0, 20); // Limit to first 20 items for display
+}
+
 export function RepositoryInfo() {
   const { repository, isLoading } = useAppStore();
-  const [repoData, setRepoData] = useState({
-    stars: 0,
-    forks: 0,
-    language: 'TypeScript',
-    lastUpdated: 'Recently',
-    description: '',
-  });
-
-  useEffect(() => {
-    // Simulate fetching repository data
-    if (repository && !isLoading) {
-      setTimeout(() => {
-        setRepoData({
-          stars: Math.floor(Math.random() * 100000),
-          forks: Math.floor(Math.random() * 10000),
-          language: 'TypeScript',
-          lastUpdated: '2 days ago',
-          description: 'A collection of beautiful components built with Radix UI and Tailwind CSS.',
-        });
-      }, 500);
+  
+  // Parse the real tree from backend
+  const fileTree = useMemo(() => {
+    if (!repository?.tree) return [];
+    return parseTreeStructure(repository.tree);
+  }, [repository?.tree]);
+  
+  // Extract summary info
+  const summaryInfo = useMemo(() => {
+    if (!repository?.summary) {
+      return {
+        filesCount: 0,
+        tokens: '0',
+        description: '',
+      };
     }
-  }, [repository, isLoading]);
-
-  // Mock file tree
-  const fileTree = [
-    {
-      name: 'src',
-      type: 'folder' as const,
-      children: [
-        { name: 'components', type: 'folder' as const },
-        { name: 'lib', type: 'folder' as const },
-        { name: 'app', type: 'folder' as const },
-      ],
-    },
-    {
-      name: 'public',
-      type: 'folder' as const,
-      children: [
-        { name: 'images', type: 'folder' as const },
-      ],
-    },
-    { name: 'package.json', type: 'file' as const },
-    { name: 'README.md', type: 'file' as const },
-    { name: 'tsconfig.json', type: 'file' as const },
-  ];
+    
+    const summary = repository.summary;
+    const filesMatch = summary.match(/Files analyzed: (\d+)/);
+    const tokensMatch = summary.match(/Estimated tokens: ([\d.]+k?)/);
+    
+    return {
+      filesCount: filesMatch ? parseInt(filesMatch[1]) : 0,
+      tokens: tokensMatch ? tokensMatch[1] : '0',
+      description: `Analyzed ${filesMatch ? filesMatch[1] : 0} files`,
+    };
+  }, [repository?.summary]);
 
   if (!repository) return null;
 
@@ -78,74 +90,58 @@ export function RepositoryInfo() {
             ) : (
               <>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  {repoData.description}
+                  {summaryInfo.description}
                 </p>
 
                 <div className="flex flex-wrap gap-2 pt-2">
                   <Badge variant="secondary" className="gap-1">
-                    <Star className="h-3 w-3" />
-                    {repoData.stars.toLocaleString()}
-                  </Badge>
-                  <Badge variant="secondary" className="gap-1">
-                    <GitFork className="h-3 w-3" />
-                    {repoData.forks.toLocaleString()}
+                    <FileCode className="h-3 w-3" />
+                    {summaryInfo.filesCount} files
                   </Badge>
                   <Badge variant="secondary" className="gap-1">
                     <Code2 className="h-3 w-3" />
-                    {repoData.language}
+                    {summaryInfo.tokens} tokens
                   </Badge>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
-                  <Calendar className="h-3 w-3" />
-                  <span>Updated {repoData.lastUpdated}</span>
-                </div>
+                {repository?.summary && (
+                  <div className="text-xs text-muted-foreground pt-2 font-mono bg-muted/30 p-2 rounded">
+                    {repository.summary.split('\n').slice(0, 3).join('\n')}
+                  </div>
+                )}
               </>
             )}
           </div>
         </Card>
 
         {/* File Structure */}
-        {!isLoading && (
+        {!isLoading && fileTree.length > 0 && (
           <Card className="p-4 bg-card">
             <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
               <FolderOpen className="h-4 w-4" />
               Repository Structure
             </h4>
-            <Accordion type="single" collapsible className="w-full">
+            <div className="space-y-1 text-sm font-mono">
               {fileTree.map((item, index) => (
-                <AccordionItem key={index} value={`item-${index}`} className="border-none">
+                <div
+                  key={index}
+                  className="flex items-center gap-2 py-1 px-2 rounded hover:bg-muted/50 cursor-pointer"
+                  style={{ paddingLeft: `${item.indent * 16 + 8}px` }}
+                >
                   {item.type === 'folder' ? (
                     <>
-                      <AccordionTrigger className="py-2 hover:no-underline hover:bg-muted/50 px-2 rounded text-sm">
-                        <div className="flex items-center gap-2">
-                          <FolderOpen className="h-3.5 w-3.5 text-primary" />
-                          <span>{item.name}</span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pb-0">
-                        <div className="ml-4 space-y-1">
-                          {item.children?.map((child, childIndex) => (
-                            <div
-                              key={childIndex}
-                              className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm"
-                            >
-                              <FolderOpen className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-muted-foreground">{child.name}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
+                      <FolderOpen className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                      <span className="text-foreground truncate">{item.name}</span>
                     </>
                   ) : (
-                    <div className="flex items-center gap-2 py-2 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
-                      <FileCode className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{item.name}</span>
-                    </div>
+                    <>
+                      <FileCode className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      <span className="text-muted-foreground truncate">{item.name}</span>
+                    </>
                   )}
-                </AccordionItem>
+                </div>
               ))}
-            </Accordion>
+            </div>
           </Card>
         )}
 

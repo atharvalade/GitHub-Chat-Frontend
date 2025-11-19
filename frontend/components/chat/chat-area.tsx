@@ -10,12 +10,14 @@ import { useAppStore } from '@/lib/store';
 import { ChatMessage } from './chat-message';
 import { SuggestedQuestions } from './suggested-questions';
 import { EmptyState } from './empty-state';
+import { sendChatMessage } from '@/lib/api';
+import { toast } from 'sonner';
 
 export function ChatArea() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { messages, addMessage, isLoading, repository } = useAppStore();
+  const { messages, addMessage, isLoading, repository, chatHistory, setChatHistory } = useAppStore();
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
@@ -25,7 +27,7 @@ export function ChatArea() {
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!input.trim() || isTyping) return;
+    if (!input.trim() || isTyping || !repository) return;
 
     const userMessage = {
       id: Date.now().toString(),
@@ -35,21 +37,45 @@ export function ChatArea() {
     };
 
     addMessage(userMessage);
+    const query = input.trim();
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // Call real backend API
+      const response = await sendChatMessage(
+        repository.owner,
+        repository.name,
+        query,
+        chatHistory
+      );
+
       const aiMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant' as const,
-        content: generateMockResponse(),
-        sources: generateMockSources(),
+        content: response.response,
         timestamp: new Date(),
       };
+      
       addMessage(aiMessage);
+      setChatHistory(response.history);
       setIsTyping(false);
-    }, 1500);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get response';
+      
+      const errorAiMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant' as const,
+        content: `Sorry, I encountered an error: ${errorMessage}. Please try again.`,
+        timestamp: new Date(),
+      };
+      
+      addMessage(errorAiMessage);
+      toast.error('Failed to get response', {
+        description: errorMessage,
+      });
+      setIsTyping(false);
+    }
   };
 
   const handleQuestionClick = (question: string) => {
@@ -151,36 +177,5 @@ export function ChatArea() {
       </div>
     </main>
   );
-}
-
-// Mock response generator
-function generateMockResponse(): string {
-  const responses = [
-    `Based on the repository structure, I can help you understand this. The main implementation can be found in the \`src/components\` directory. Here's what I found:\n\nThe codebase uses a modular architecture with clear separation of concerns. Each component is self-contained and follows best practices for maintainability.\n\nKey files to look at:\n- \`src/components/ui/button.tsx\`: Contains the button component implementation\n- \`lib/utils.ts\`: Utility functions used throughout the codebase\n\nWould you like me to explain any specific part in more detail?`,
-    
-    `Great question! Looking at the issues and discussions, this is a common topic. Here's what the maintainers have said:\n\nThe architecture follows a composition-based approach, allowing for maximum flexibility. You can see this pattern implemented throughout the codebase.\n\nThe relevant discussion can be found in Issue #123 where the team explains the design decisions behind this approach.`,
-    
-    `I've analyzed the code and found several relevant implementations. The main logic is split across multiple files for better organization:\n\n1. Component definitions in \`src/components\`\n2. Utility functions in \`lib/\`\n3. Type definitions in the respective component files\n\nEach component is built with accessibility in mind, using Radix UI primitives as a foundation.`,
-  ];
-
-  return responses[Math.floor(Math.random() * responses.length)];
-}
-
-// Mock sources generator
-function generateMockSources() {
-  return [
-    {
-      type: 'code' as const,
-      file: 'src/components/ui/button.tsx',
-      lineStart: 12,
-      lineEnd: 45,
-      snippet: 'export function Button({ className, variant, size, ...props }) { ... }',
-    },
-    {
-      type: 'issue' as const,
-      title: 'Discussion: Component Architecture',
-      url: 'https://github.com/owner/repo/issues/123',
-    },
-  ];
 }
 

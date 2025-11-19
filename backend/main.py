@@ -32,14 +32,16 @@ app = FastAPI(
     redoc_url=None if IS_PROD else "/redoc",
 )
 
-if not IS_PROD:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# CORS configuration - Allow frontend to access backend
+# In production, you should specify your frontend URL instead of "*"
+# Example: allow_origins=["https://your-frontend.vercel.app"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Change this to your frontend URL in production for better security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 logging.basicConfig(
     level=logging.INFO,

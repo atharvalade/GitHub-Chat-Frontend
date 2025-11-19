@@ -28,6 +28,8 @@ export interface Repository {
   language?: string;
   lastUpdated?: string;
   fileTree?: FileNode[];
+  summary?: string;
+  tree?: string;
 }
 
 export interface FileNode {
@@ -40,12 +42,14 @@ export interface FileNode {
 interface AppState {
   repository: Repository | null;
   messages: Message[];
+  chatHistory: [string, string][];
   isLoading: boolean;
   isProcessing: boolean;
   error: string | null;
   setRepository: (repo: Repository) => void;
   addMessage: (message: Message) => void;
   setMessages: (messages: Message[]) => void;
+  setChatHistory: (history: [string, string][]) => void;
   setIsLoading: (loading: boolean) => void;
   setIsProcessing: (processing: boolean) => void;
   setError: (error: string | null) => void;
@@ -56,6 +60,7 @@ interface AppState {
 export const useAppStore = create<AppState>((set) => ({
   repository: null,
   messages: [],
+  chatHistory: [],
   isLoading: false,
   isProcessing: false,
   error: null,
@@ -64,13 +69,15 @@ export const useAppStore = create<AppState>((set) => ({
     messages: [...state.messages, message] 
   })),
   setMessages: (messages) => set({ messages }),
+  setChatHistory: (history) => set({ chatHistory: history }),
   setIsLoading: (loading) => set({ isLoading: loading }),
   setIsProcessing: (processing) => set({ isProcessing: processing }),
   setError: (error) => set({ error }),
-  clearChat: () => set({ messages: [] }),
+  clearChat: () => set({ messages: [], chatHistory: [] }),
   reset: () => set({ 
     repository: null, 
     messages: [], 
+    chatHistory: [],
     isLoading: false, 
     isProcessing: false,
     error: null 

@@ -7,10 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Github, MessageSquare, Code, GitBranch, Sparkles, ArrowRight } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
+import { initializeRepository } from '@/lib/api';
+import { toast } from 'sonner';
 
 export default function Home() {
   const [repoUrl, setRepoUrl] = useState('');
   const [error, setError] = useState('');
+  const [analyzing, setAnalyzing] = useState(false);
   const router = useRouter();
   const { setRepository, setIsLoading } = useAppStore();
 
@@ -37,17 +40,39 @@ export default function Home() {
     const owner = urlParts[urlParts.length - 2];
     const name = urlParts[urlParts.length - 1];
 
-    // Set repository data (in real app, this would come from backend)
-    setRepository({
-      url: repoUrl.trim(),
-      name,
-      owner,
-    });
-
+    setAnalyzing(true);
     setIsLoading(true);
     
-    // Navigate to chat page
-    router.push('/chat');
+    try {
+      // Call backend to initialize and analyze the repository
+      toast.info('Analyzing repository...', {
+        description: 'This may take a few moments',
+      });
+      
+      const response = await initializeRepository(owner, name);
+      
+      // Set repository data with backend response
+      setRepository({
+        url: repoUrl.trim(),
+        name,
+        owner,
+        summary: response.summary,
+        tree: response.tree,
+      });
+
+      toast.success('Repository analyzed successfully!');
+      
+      // Navigate to chat page
+      router.push('/chat');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to analyze repository';
+      setError(errorMessage);
+      toast.error('Failed to analyze repository', {
+        description: errorMessage,
+      });
+      setIsLoading(false);
+      setAnalyzing(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -115,9 +140,19 @@ export default function Home() {
                   onClick={handleAnalyze}
                   size="lg"
                   className="h-12 px-8 shadow-md hover:shadow-lg transition-all"
+                  disabled={analyzing}
                 >
-                  Analyze Repository
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  {analyzing ? (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4 animate-pulse" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      Analyze Repository
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
                 </Button>
               </div>
               
