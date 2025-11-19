@@ -54,8 +54,16 @@ class KeyManager:
         logger.info("Reset to primary API key")
 
 
-# Global KeyManager instance
-key_manager = KeyManager()
+# Global KeyManager instance (lazy initialization)
+key_manager = None
+
+
+def get_key_manager() -> KeyManager:
+    """Get or create the global KeyManager instance"""
+    global key_manager
+    if key_manager is None:
+        key_manager = KeyManager()
+    return key_manager
 
 
 async def generate_response(prompt: str, max_retries: int = 2) -> str:
@@ -78,11 +86,11 @@ async def generate_response(prompt: str, max_retries: int = 2) -> str:
     while retries <= max_retries:
         try:
             # Configure the API with current key
-            current_key = key_manager.get_current_key()
+            current_key = get_key_manager().get_current_key()
             genai.configure(api_key=current_key)
             
             # Initialize the model
-            model = genai.GenerativeModel(key_manager.model_name)
+            model = genai.GenerativeModel(get_key_manager().model_name)
             
             # Generate response
             logger.info(f"Sending prompt to {key_manager.model_name} (length: {len(prompt)} chars)")
@@ -103,7 +111,7 @@ async def generate_response(prompt: str, max_retries: int = 2) -> str:
                 logger.warning(f"Quota exhausted on attempt {retries + 1}: {e}")
                 
                 # Try to rotate to next key
-                if key_manager.rotate_key():
+                if get_key_manager().rotate_key():
                     retries += 1
                     logger.info(f"Retrying with new key (attempt {retries + 1}/{max_retries + 1})")
                     continue
