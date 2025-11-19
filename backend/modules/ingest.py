@@ -130,7 +130,7 @@ if __name__ == "__main__":
     
     async def test_ingestion():
         """Test repository ingestion."""
-        test_repo_url = "https://github.com/username/repository"
+        test_repo_url = "https://github.com/aniketlavasare/New-Year-Countdown-WebApp"
         
         print(f"Testing ingestion of: {test_repo_url}")
         print("-" * 60)
