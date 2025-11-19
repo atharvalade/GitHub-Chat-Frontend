@@ -79,8 +79,8 @@ def main():
     print("✅ Health check passed!\n")
     
     # Test 2: Initialize a small repository
-    owner = "rtyley"
-    repo = "small-test-repo"
+    owner = "aniketlavasare"
+    repo = "New-Year-Countdown-WebApp"
     
     if not test_initialize_repo(owner, repo):
         print("❌ Repository initialization failed!")

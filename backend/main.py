@@ -8,9 +8,14 @@ from modules.llm import generate_response  # type: ignore
 from modules.prompt import generate_prompt  # type: ignore
 
 import os
+import sys
+import asyncio
 from dotenv import load_dotenv
 import logging
 
+# Fix for Python 3.13 on Windows - Use ProactorEventLoop for subprocess support
+if sys.platform == 'win32' and sys.version_info >= (3, 13):
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 load_dotenv()
 
@@ -185,7 +190,7 @@ async def healthcheck():
 
 async def main():
     """Test function to verify the application works."""
-    summary, tree, content = await ingest_repo("https://github.com/EnhancedJax/Bagels")
+    summary, tree, content = await ingest_repo("https://github.com/aniketlavasare/New-Year-Countdown-WebApp")
     prompt = await generate_prompt(
         "How does this codebase work? What is it built using?", [], tree, content
     )
